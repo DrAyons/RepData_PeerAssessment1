@@ -1,0 +1,142 @@
+# REPRODUCIBLE RESEARCH COURSERA ONLINE COURSE
+## WEEK 2 PEER-REVIEW PROJECT
+
+## Reading the data
+```{r}
+act <- read.csv("activity.csv")
+```
+
+## Mean steps taken per day
+```{r}
+meansteps <- tapply(act$steps, act$date, mean, na.rm=TRUE)
+meansteps
+```
+
+## Number of steps taken per day
+
+```{r}
+stepsperday <- tapply(act$steps, act$date, sum, na.rm=TRUE)
+stepsperday
+```
+
+## Histogram steps taken each day
+
+```{r}
+hist(stepsperday, xlab = "Steps per day", main = "Histogram Steps Taken Per Day")
+```
+
+## Mean and Median Steps taken per day
+
+```{r}
+meanstepsperday <- mean(stepsperday)
+medianstepsperday <- median(stepsperday)
+```
+
+The mean of the total number od steps taken per day is 9354.23,
+The median of the total number of steps taken per day is 10395.
+
+## Time-series Plot
+
+# Preliminary wrangling
+
+```{r}
+library(lubridate)
+act$date <- ymd(act$date)
+```
+
+```{r}
+s <- split(act, act$date)
+meanofstepsperday <- sapply(s, function(x){mean(x[,1],na.rm = TRUE)})
+
+##Function to help rearrange dates
+formatdate <- function(x){
+        nx <- nrow(x)
+        newdate <- numeric(nx)
+        for (i in 1:nx) {
+                if(nchar(x[i,3])==1){x[i,3] <- paste0(000,x[i,3])}
+                if(nchar(x[i,3])==2){x[i,3] <-paste0(00,x[i,3])}
+                if(nchar(x[i,3])==3){x[i,3] <-paste0(0,x[i,3])}
+                
+        x$newdate[i] <- paste(x[i,2],x[i,3])
+        }
+        x
+}
+
+newact <- formatdate(act)
+
+newdf <- data.frame(averagesteps=meanofstepsperday, date=unique(newact$date))
+
+with(newdf, plot(date, averagesteps, type="l", col="magenta"))
+```
+
+## Missing values
+
+# The total number of missing values.
+
+```{r}
+sum(is.na(act[,1:3]))
+```
+
+# Imputting Missing Values using the means of intervals
+
+```{r}
+act1 <- act
+act1$interval <- as.factor(act1$interval)
+```
+
+# A function to implement the strategy
+
+```{r}
+imputna <- function(x){
+        nx <- nrow(x)
+        mean_by_interval <- tapply(act1[,1], act1[,3], mean, na.rm= T)
+        m <- as.vector(mean_by_interval)
+        x[1:288,1] <- m[1:288]; x[2017:2304,1] <- m[1:288]
+        x[8929:9216,1] <- m[1:288]; x[9793:10080,1] <- m[1:288]
+        x[11233:11520,1] <- m[1:288]; x[11521:11808,1] <- m[1:288]
+        x[12673:12960,1] <- m[1:288]; x[17281:17568,1] <- m[1:288]
+        
+        x
+}
+```
+
+# New data set with missing values added
+
+```{r}
+act2 <- imputna(act1)
+```
+
+## Total number of steps taken each day and the histogram
+
+```{r}
+sumt <- tapply(act2$steps, act2$date, sum)
+hist(sumt)
+```
+
+## Median and Mean total number of steps taken each day
+
+```{r}
+mediant <- tapply(act2$steps, act2$date, median)
+meant <- tapply(act2$steps, act2$date, mean)
+```
+
+
+## Weekdays vs Weekends
+
+```{r}
+act2$week <- factor(weekdays(act2$date))
+```
+
+```{r, results= "hide"}
+library(tidyverse)
+```
+
+```{r}
+act2$weekdayorend <- recode(act2$week, "Monday"="weekday", "Tuesday"="weekday",
+"Wednesday"="weekday","Thursday"="weekday","Friday"="weekend",
+"Saturday"="weekend","Sunday"="weekend")
+
+##Panel plot
+ggplot(act2, aes(interval, steps))+ geom_line()+ facet_wrap(~weekdayorend)
+```
+
